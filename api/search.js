@@ -1,27 +1,29 @@
-import cheerio from 'cheerio';
+import axios from "axios";
+import cheerio from "cheerio";
 
 export default async function handler(req, res) {
   const { query } = req.query;
-  if (!query) return res.status(400).json({ status: false, message: "Masukkan query!" });
+  if (!query) return res.status(400).json({ error: "Query kosong!" });
 
   try {
-    const html = await fetch(`https://www.xvideos.com/?k=${encodeURIComponent(query)}`).then(r => r.text());
-    const $ = cheerio.load(html);
-    const results = [];
+    const response = await axios.get(`https://www.xvideos.com/?k=${encodeURIComponent(query)}`);
+    const $ = cheerio.load(response.data);
 
-    $('div.mozaique > div.video').each((i, el) => {
-      const title = $(el).find('p.title a').text().trim();
-      const url = 'https://www.xvideos.com' + $(el).find('p.title a').attr('href');
-      const thumb = $(el).find('div.thumb img').attr('data-src') || $(el).find('div.thumb img').attr('src');
-      const duration = $(el).find('.duration').text().trim();
+    const hasil = [];
+    $("div.mozaique div.thumb-block").each((i, el) => {
+      const title = $(el).find("p.title a").text().trim();
+      const url = "https://www.xvideos.com" + $(el).find("p.title a").attr("href");
+      const duration = $(el).find(".duration").text().trim();
+      const thumb = $(el).find("img").attr("data-src") || $(el).find("img").attr("src");
 
       if (title && url && thumb) {
-        results.push({ title, url, thumb, duration });
+        hasil.push({ title, url, duration, thumb });
       }
     });
 
-    res.status(200).json({ status: true, total: results.length, results });
+    res.status(200).json({ result: hasil });
   } catch (e) {
-    res.status(500).json({ status: false, message: 'Scrape gagal', error: e.message });
+    console.error("❌ Error search:", e.message);
+    res.status(500).json({ error: "Gagal mengambil data Xvideos." });
   }
 }
